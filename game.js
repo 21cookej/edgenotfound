@@ -34,7 +34,7 @@ const sfx = {
 const fontDefault = "px sans-serif";
 
 var scale = 70;
-var roughSeed = 1;
+var roughSeed = 0;
 
 const timing = new Timing((1/ 10), (1 / 60));
 
@@ -451,26 +451,26 @@ function gameLoop() {
 			//Render player
 			var size = 0.8;
 			roughPlayer.circle(localScale * .5, localScale * .5,
-				localScale * size, {fill: colors[colorTheme][1], fillStyle: "solid", stroke: colors[colorTheme][2], strokeWidth: 1, seed: roughSeed});
+				localScale * size, {fill: colors[colorTheme][1], fillStyle: "solid", stroke: colors[colorTheme][2], strokeWidth: 1});
 
 			//Render wall
 			roughWall.rectangle(wallMargin * 0.5, wallMargin * 0.5, 
-				localScale, localScale, {stroke: "none", fill: colors[colorTheme][2], strokeWidth: 1, seed: roughSeed});
+				localScale, localScale, {stroke: "none", fill: colors[colorTheme][2], strokeWidth: 1});
 
 			//Render box
 			var size = 0.8;
 			roughBox.rectangle(boxMargin * 0.5 + (1-size) * 0.5 * localScale, boxMargin * 0.5 + (1-size) * 0.5 * localScale, 
-			localScale * size, localScale * size, {stroke: colors[colorTheme][2], fill: colors[colorTheme][2], strokeWidth: 2, seed: roughSeed});
+			localScale * size, localScale * size, {stroke: colors[colorTheme][2], fill: colors[colorTheme][2], strokeWidth: 2});
 
 			//Render rubble
 			var size = 1.1;
 			roughRubble.rectangle(rubbleMargin * 0.5 + (1-size) * 0.5 * localScale, rubbleMargin * 0.5 + (1-size) * 0.5 * localScale, 
-			localScale * size, localScale * size, {stroke: "none", fill: colors[colorTheme][2], fillStyle: "dots", fillWeight: localScale / 70, strokeWidth: 2, seed: roughSeed});
+			localScale * size, localScale * size, {stroke: "none", fill: colors[colorTheme][2], fillStyle: "dots", fillWeight: localScale / 70, strokeWidth: 2});
 
 			//Render target
 			var size = 0.9;
 			roughTarget.rectangle(targetMargin * 0.5 + (1-size) * 0.5 * localScale, targetMargin * 0.5 + (1-size) * 0.5 * localScale, 
-			localScale * size, localScale * size, {fillStyle: "solid", fill: colors[colorTheme][1], stroke: colors[colorTheme][2], bowing: 4, strokeWidth: 1, fillWeight: 0.25, seed: roughSeed});
+			localScale * size, localScale * size, {fillStyle: "solid", fill: colors[colorTheme][1], stroke: colors[colorTheme][2], bowing: 4, strokeWidth: 1, fillWeight: 0.25});
 		}
 
 		var shaking = (camShakeX != 0 || camShakeY != 0);
