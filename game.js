@@ -1296,12 +1296,8 @@ function MovePlayer(horDelta, verDelta) {
 		var targetY = target.y;
 
 		// 1. ADD THIS VARIABLE near the top of your code (around line 50 with other config variables):
-		var maxBoxPushCount = 6; // Change this number to set how many boxes can be pushed at once
+		var maxBoxPushCount = 6;
 		
-		
-		// 2. REPLACE the box-checking section in MovePlayer function (around line 1065-1080)
-		// Find this part and replace it:
-
 		// NEW: Check for a chain of boxes
 		var boxChain = [];
 		var checkX = targetX;
@@ -1320,14 +1316,14 @@ function MovePlayer(horDelta, verDelta) {
 				break; // No more boxes in chain
 			}
 		}
-
+		
 		// If we found boxes, try to push them
 		if (boxChain.length > 0) {
 			// Check if the space after the last box is empty
 			var finalTarget = wrapCoords(targetX + horDelta * boxChain.length, targetY + verDelta * boxChain.length);
 			let finalX = finalTarget.x;
 			let finalY = finalTarget.y;
-
+			
 			if (hasWall(finalX, finalY) === null && 
 				hasBox(finalX, finalY) === null && 
 				hasRubble(finalX, finalY) === null) {
@@ -1343,20 +1339,22 @@ function MovePlayer(horDelta, verDelta) {
 				player = {x: targetX, y: targetY};
 				movementResolved = true;
 				boxPushed = true;
-
-				// Handle shift boxes (only for the first box pushed)
+				
+				// Handle shift boxes (check all boxes in chain)
 				for (let i = 0; i < boxChain.length; i++) {
-				    let boxIndex = boxChain[i];
-				    if (boxes[boxIndex].shift != 0) {
-				        if (boxes[boxIndex].shift == 1 || boxes[boxIndex].shift == 3) {
-				            ShiftX(horDelta);
-				        }
-				        
-				        if (boxes[boxIndex].shift == 2 || boxes[boxIndex].shift == 3) {
-				            ShiftY(verDelta);
-				        }
-				    }
+					let boxIndex = boxChain[i];
+					if (boxes[boxIndex].shift != 0) {
+						if (boxes[boxIndex].shift == 1 || boxes[boxIndex].shift == 3) {
+							ShiftX(horDelta);
+						}
+						
+						if (boxes[boxIndex].shift == 2 || boxes[boxIndex].shift == 3) {
+							ShiftY(verDelta);
+						}
+					}
 				}
+			}
+		}
 
 
 // REMOVE the old code that looked like this:
