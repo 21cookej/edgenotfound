@@ -1,6 +1,6 @@
 var levels = [];
 levels.push([
-	{gates: [0, 1, 5, 8, 13, 16], levelSpread: [1, 2, 5, 10, 17, 21], yOff: -2, xOff:-2 }, //Level select
+	{gates: [0, 1, 5, 8, 13, 16], levelSpread: [1, 2, 5, 10, 17, 21], yOff: -2}, //Level select
 	".........",
 	"....1....",
 	".........",
