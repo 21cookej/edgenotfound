@@ -1345,18 +1345,17 @@ function MovePlayer(horDelta, verDelta) {
 				boxPushed = true;
 
 				// Handle shift boxes (only for the first box pushed)
-				for (let i = 0; i < boxChain.length; i++) {
-				    let boxIndex = boxChain[i];
-				    if (boxes[boxIndex].shift != 0) {
-				        if (boxes[boxIndex].shift == 1 || boxes[boxIndex].shift == 3) {
-				            ShiftX(horDelta);
-				        }
-				        
-				        if (boxes[boxIndex].shift == 2 || boxes[boxIndex].shift == 3) {
-				            ShiftY(verDelta);
-				        }
-				    }
+				if (boxes[boxChain[0]].shift != 0) {
+					if (boxes[boxChain[0]].shift == 1 || boxes[boxChain[0]].shift == 3) {
+						ShiftX(horDelta);
+					}
+					
+					if (boxes[boxChain[0]].shift == 2 || boxes[boxChain[0]].shift == 3) {
+						ShiftY(verDelta);
+					}
 				}
+			}
+		}
 
 
 // REMOVE the old code that looked like this:
