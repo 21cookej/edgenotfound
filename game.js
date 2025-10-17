@@ -50,16 +50,16 @@ const roughLevel = rough.canvas(levelCanvas, {roughness: defaultRoughness});
 
 const pathCanvas = document.createElement("canvas");
 const pathCtx = pathCanvas.getContext("2d");
-const roughPath = rough.canvas(pathCanvas, {roughness: 0.2});
+const roughPath = rough.canvas(pathCanvas);
 
 const wallCanvas = document.createElement("canvas");
 const wallCtx = wallCanvas.getContext("2d");
-const roughWall = rough.canvas(wallCanvas, {roughness: 0.2});
+const roughWall = rough.canvas(wallCanvas);
 const wallMargin = 10;
 
 const playerCanvas = document.createElement("canvas");
 const PlayerCtx = playerCanvas.getContext("2d");
-const roughPlayer = rough.canvas(playerCanvas, {roughness: 0.2});
+const roughPlayer = rough.canvas(playerCanvas);
 
 const boxCanvas = document.createElement("canvas");
 const boxCtx = boxCanvas.getContext("2d");
@@ -73,7 +73,7 @@ const targetMargin = 15;
 
 const rubbleCanvas = document.createElement("canvas");
 const rubbleCtx = rubbleCanvas.getContext("2d");
-const roughRubble = rough.canvas(rubbleCanvas, {roughness: 0.2});
+const roughRubble = rough.canvas(rubbleCanvas);
 const rubbleMargin = 15;
 
 let undoStack = [];
