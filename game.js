@@ -1301,7 +1301,7 @@ function MovePlayer(horDelta, verDelta) {
 		
 		// 2. REPLACE the box-checking section in MovePlayer function (around line 1065-1080)
 		// Find this part and replace it:
-
+		
 		// NEW: Check for a chain of boxes
 		var boxChain = [];
 		var checkX = targetX;
@@ -1320,20 +1320,19 @@ function MovePlayer(horDelta, verDelta) {
 				break; // No more boxes in chain
 			}
 		}
-
+		
 		// If we found boxes, try to push them
 		if (boxChain.length > 0) {
 			// Check if the space after the last box is empty
 			var finalTarget = wrapCoords(targetX + horDelta * boxChain.length, targetY + verDelta * boxChain.length);
 			let finalX = finalTarget.x;
 			let finalY = finalTarget.y;
-
+		
 			if (hasWall(finalX, finalY) === null && 
 				hasBox(finalX, finalY) === null && 
 				hasRubble(finalX, finalY) === null) {
 				
-				// Push all boxes in the chain
-				// Start from the furthest box and move backwards to avoid conflicts
+				// Push all boxes in the chain (from back to front)
 				for (let i = boxChain.length - 1; i >= 0; i--) {
 					let boxIndex = boxChain[i];
 					let newPos = wrapCoords(boxes[boxIndex].x + horDelta, boxes[boxIndex].y + verDelta);
@@ -1343,19 +1342,22 @@ function MovePlayer(horDelta, verDelta) {
 				player = {x: targetX, y: targetY};
 				movementResolved = true;
 				boxPushed = true;
-
-				// Handle shift boxes (only for the first box pushed)
-				if (boxes[boxChain[0]].shift != 0) {
-					if (boxes[boxChain[0]].shift == 1 || boxes[boxChain[0]].shift == 3) {
-						ShiftX(horDelta);
-					}
-					
-					if (boxes[boxChain[0]].shift == 2 || boxes[boxChain[0]].shift == 3) {
-						ShiftY(verDelta);
+		
+				// ✅ Handle shift boxes for all boxes in the chain
+				for (let i = 0; i < boxChain.length; i++) {
+					let shiftType = boxes[boxChain[i]].shift;
+					if (shiftType != 0) {
+						if (shiftType == 1 || shiftType == 3) {
+							ShiftX(horDelta);
+						}
+						if (shiftType == 2 || shiftType == 3) {
+							ShiftY(verDelta);
+						}
 					}
 				}
 			}
 		}
+
 
 
 // REMOVE the old code that looked like this:
