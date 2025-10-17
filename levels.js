@@ -49,13 +49,17 @@ levels.push([
 	"t.b.t"
 ]);
 levels.push([
-	{nr: 104, name: "Girder Grid"}, //uurruullllddrrudrruullddlluuuuudrrddrruuudrrddlruurrddl ( ~50)
-	".#.#.#",
-	"t.#.t",
-	".#.#.#",
-	"b.p.b",
-	".#.#.#",
-	"t.b.t"
+	{nr: 104, name: "Locked Loungerooms", yOff: -2}, //lrrlluurrDLLLLLLLdlUUrrdddrrrrrddrruLdlUUlluulllluuulluurDDldRRddrrrrruurDDllllLulDuullllllllllullldRRRRRRRRRRRurDrddrddlUluluurlddrRuulDrdRRRlllulldRRRR (153)
+	"#############",
+	"####..###....",
+	".......##....",
+	"####....#....",
+	"####.........",
+	"....#...#....",
+	"#....#.......",
+	"...||.###....",
+	"##.p.....p...",
+	"tt#...###...."
 ]);
 levels.push([
 	{nr: 200, name: "Straight Spiral", yOff: 2}, //Wrap offset introduction puzzle
