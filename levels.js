@@ -49,7 +49,7 @@ levels.push([
 	"t.b.t"
 ]);
 levels.push([
-	{nr: 104, name: "Locked Loungerooms", yOff: -2}, //lrrlluurrDLLLLLLLdlUUrrdddrrrrrddrruLdlUUlluulllluuulluurDDldRRddrrrrruurDDllllLulDuullllllllllullldRRRRRRRRRRRurDrddrddlUluluurlddrRuulDrdRRRlllulldRRRR (153)
+	{nr: 104, name: "Things"}, //lrrlluurrDLLLLLLLdlUUrrdddrrrrrddrruLdlUUlluulllluuulluurDDldRRddrrrrruurDDllllLulDuullllllllllullldRRRRRRRRRRRurDrddrddlUluluurlddrRuulDrdRRRlllulldRRRR (153)
 	"#############",
 	"####..###....",
 	".......##....",
@@ -57,8 +57,8 @@ levels.push([
 	"####.........",
 	"....#...#....",
 	"#....#.......",
-	"...||.###....",
-	"##.p.....p...",
+	"..|||.###....",
+	"##.p.........",
 	"tt#...###...."
 ]);
 levels.push([
