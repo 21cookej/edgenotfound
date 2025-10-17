@@ -1295,6 +1295,71 @@ function MovePlayer(horDelta, verDelta) {
 		var targetX = target.x;
 		var targetY = target.y;
 
+		// 1. ADD THIS VARIABLE near the top of your code (around line 50 with other config variables):
+		var maxBoxPushCount = 6; // Change this number to set how many boxes can be pushed at once
+		
+		
+		// 2. REPLACE the box-checking section in MovePlayer function (around line 1065-1080)
+		// Find this part and replace it:
+
+		// NEW: Check for a chain of boxes
+		var boxChain = [];
+		var checkX = targetX;
+		var checkY = targetY;
+		
+		// Build the chain of boxes in the push direction
+		for (let i = 0; i < maxBoxPushCount; i++) {
+			let foundBox = hasBox(checkX, checkY);
+			if (foundBox !== null) {
+				boxChain.push(foundBox);
+				// Check next position
+				var nextPos = wrapCoords(checkX + horDelta, checkY + verDelta);
+				checkX = nextPos.x;
+				checkY = nextPos.y;
+			} else {
+				break; // No more boxes in chain
+			}
+		}
+
+		// If we found boxes, try to push them
+		if (boxChain.length > 0) {
+			// Check if the space after the last box is empty
+			var finalTarget = wrapCoords(targetX + horDelta * boxChain.length, targetY + verDelta * boxChain.length);
+			let finalX = finalTarget.x;
+			let finalY = finalTarget.y;
+
+			if (hasWall(finalX, finalY) === null && 
+				hasBox(finalX, finalY) === null && 
+				hasRubble(finalX, finalY) === null) {
+				
+				// Push all boxes in the chain
+				// Start from the furthest box and move backwards to avoid conflicts
+				for (let i = boxChain.length - 1; i >= 0; i--) {
+					let boxIndex = boxChain[i];
+					let newPos = wrapCoords(boxes[boxIndex].x + horDelta, boxes[boxIndex].y + verDelta);
+					boxes[boxIndex] = {x: newPos.x, y: newPos.y, shift: boxes[boxIndex].shift};
+				}
+				
+				player = {x: targetX, y: targetY};
+				movementResolved = true;
+				boxPushed = true;
+
+				// Handle shift boxes (only for the first box pushed)
+				if (boxes[boxChain[0]].shift != 0) {
+					if (boxes[boxChain[0]].shift == 1 || boxes[boxChain[0]].shift == 3) {
+						ShiftX(horDelta);
+					}
+					
+					if (boxes[boxChain[0]].shift == 2 || boxes[boxChain[0]].shift == 3) {
+						ShiftY(verDelta);
+					}
+				}
+			}
+		}
+
+
+// REMOVE the old code that looked like this:
+/*
 		let foundBox = hasBox(targetX, targetY);
 		if (foundBox !== null) {
 			var boxTarget = wrapCoords(targetX + horDelta, targetY + verDelta);
@@ -1308,16 +1373,17 @@ function MovePlayer(horDelta, verDelta) {
 				boxPushed = true;
 
 				if (boxes[foundBox].shift != 0) {
-					if (boxes[foundBox].shift == 1 || boxes[foundBox].shift == 3) { //Horizontal (x)
+					if (boxes[foundBox].shift == 1 || boxes[foundBox].shift == 3) {
 						ShiftX(horDelta);
 					}
 					
-					if (boxes[foundBox].shift == 2 || boxes[foundBox].shift == 3) { //Vertical (y)
+					if (boxes[foundBox].shift == 2 || boxes[foundBox].shift == 3) {
 						ShiftY(verDelta);
 					}
 				}
 			}
 		}
+*/
 		else if (hasWall(targetX, targetY) === null) {
 			player = {x: targetX, y: targetY};
 			movementResolved = true;
