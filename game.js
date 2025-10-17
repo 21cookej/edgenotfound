@@ -38,7 +38,7 @@ var roughSeed = 1;
 
 const timing = new Timing((1/ 10), (1 / 60));
 
-var defaultRoughness = 0.8;
+var defaultRoughness = 0;
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d", { alpha: false });
