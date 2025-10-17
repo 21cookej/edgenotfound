@@ -4,7 +4,7 @@ levels.push([
 	"",
 	"....1.",
 	"",
-	"...222..",
+	"...2222.",
 	"....p",
 	"..33333..",
 	"",
@@ -43,6 +43,15 @@ levels.push([
 	{nr: 103, name: "Girded Grid"}, //uurruullllddrrudrruullddlluuuuudrrddrruuudrrddlruurrddl ( ~50)
 	".#.#.#",
 	"t.b.t",
+	".#.#.#",
+	"b.p.b",
+	".#.#.#",
+	"t.b.t"
+]);
+levels.push([
+	{nr: 104, name: "Girder Grid"}, //uurruullllddrrudrruullddlluuuuudrrddrruuudrrddlruurrddl ( ~50)
+	".#.#.#",
+	"t.#.t",
 	".#.#.#",
 	"b.p.b",
 	".#.#.#",
