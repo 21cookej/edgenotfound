@@ -13,6 +13,7 @@ const obj = {
 	LEVELFOUR: "4",
 	LEVELFIVE: "5",
 	LEVELSIX: "6",
+	LEVELSEVEN: "7",
 	RUBBLE: "r",
 	GATE: "g",
 }; //all lowercase if applicable!
@@ -34,11 +35,13 @@ const sfx = {
 const fontDefault = "px sans-serif";
 
 var scale = 70;
-var roughSeed = 0;
+var roughSeed = 1;
+var usePerfectShapes = false;
 
 const timing = new Timing((1/ 10), (1 / 60));
 
-var defaultRoughness = 0;
+var defaultRoughness = 1;
+
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d", { alpha: false });
@@ -75,6 +78,11 @@ const rubbleCanvas = document.createElement("canvas");
 const rubbleCtx = rubbleCanvas.getContext("2d");
 const roughRubble = rough.canvas(rubbleCanvas);
 const rubbleMargin = 15;
+
+
+
+
+
 
 let undoStack = [];
 
@@ -115,7 +123,36 @@ onload = function(e) {
 	favicon = document.querySelector('link[rel="icon"]');
 };
 
+
+
 var level = 0;
+var sandboxMode = false;
+var sandboxLevel = null;
+var sandboxGridWidth = 10;
+var sandboxGridHeight = 10;
+var selectedTool = obj.WALL;
+var isDragging = false;
+var showSizeDialog = false;
+var tempGridWidth = 10;
+var tempGridHeight = 10;
+var sandboxOffsetX = 0;
+var sandboxOffsetY = 0;
+
+var toolbarItems = [
+	{type: obj.EMPTY, name: "Empty"},
+	{type: obj.WALL, name: "Wall"},
+	{type: obj.BOX, name: "Box"},
+	{type: obj.SHIFTBOXHOR, name: "Shift Box (H)"},
+	{type: obj.SHIFTBOXVER, name: "Shift Box (V)"},
+	{type: obj.SHIFTBOX, name: "Shift Box (Both)"},
+	{type: obj.TARGET, name: "Target"},
+	{type: obj.RUBBLE, name: "Rubble"},
+	{type: obj.PLAYER, name: "Player"}
+];
+
+
+
+
 
 //Init level
 var gridHeight = levels[level].length;
@@ -190,6 +227,36 @@ canvas.addEventListener('click', function() {
 	}
 }, false);
 
+
+
+
+// ADD THESE NEW EVENT LISTENERS HERE:
+canvas.addEventListener('mousedown', function(e) {
+	if (!sandboxMode) return;
+	handleSandboxClick(e);
+	isDragging = true;
+}, false);
+
+canvas.addEventListener('mousemove', function(e) {
+	if (!sandboxMode || !isDragging) return;
+	handleSandboxClick(e);
+}, false);
+
+canvas.addEventListener('mouseup', function() {
+	isDragging = false;
+}, false);
+
+canvas.addEventListener('contextmenu', function(e) {
+	if (sandboxMode) {
+		e.preventDefault();
+		selectedTool = obj.EMPTY;
+		handleSandboxClick(e);
+	}
+}, false);
+
+
+
+
 var titleScreen = true;
 
 var verticalInput = new InputHandler(["KeyS", "ArrowDown"], ["KeyW", "ArrowUp"], timing, 0.1, 0.2);
@@ -241,9 +308,14 @@ function gameLoop() {
 		verticalInput.update();
 		undoInput.update();
 		confirmInput.update();
-
+		
+		// Reset input handled flags
+		if (horizontalInput.fired) horizontalInput.wasHandled = false;
+		if (verticalInput.fired) verticalInput.wasHandled = false;
+		if (confirmInput.fired) confirmInput.wasHandled = false;
+		if (undoInput.fired) undoInput.wasHandled = false;
 		//Input
-		if (!victory && !titleScreen) {
+		if (!victory && !titleScreen && !sandboxMode) {
 			if (!menuOpened) {
 				if (verticalInput.fired) {
 					MovePlayer(0, verticalInput.delta);
@@ -292,7 +364,7 @@ function gameLoop() {
 				}
 			} else {//Menu input
 				var items = 5;
-				if (level == 0) {
+				if (level == 0 || sandboxMode) {
 					items = 4;
 				}
 		
@@ -334,8 +406,14 @@ function gameLoop() {
 							saveGame();
 							break;
 						case 4:
-							loadLevel(0);
-							audio(sfx.BACK, true);
+							// CHANGE THIS SECTION:
+							if (level == 999) {
+								exitSandbox();
+								audio(sfx.BACK, true);
+							} else {
+								loadLevel(0);
+								audio(sfx.BACK, true);
+							}
 							menuOpened = !menuOpened;
 					}
 				}
@@ -381,6 +459,13 @@ function gameLoop() {
 		} else {
 			scale = 70;
 		}
+
+		// Skip fade animations for sandbox mode
+		if (sandboxMode || (level == 999 && !victory)) {
+			timeSinceLevelStart = timeToLoadLevel;
+			timeSinceLevelWon = timeUntilLevelEnd;
+		}
+
 
 		var alph = 1;
 		var localScale = scale;
@@ -450,27 +535,97 @@ function gameLoop() {
 
 			//Render player
 			var size = 0.8;
-			roughPlayer.circle(localScale * .5, localScale * .5,
-				localScale * size, {fill: colors[colorTheme][1], fillStyle: "solid", stroke: colors[colorTheme][2], strokeWidth: 1});
+			if (usePerfectShapes) {
+				PlayerCtx.beginPath(); 
+				PlayerCtx.arc(localScale * .5, localScale * .5, localScale * size * 0.5, 0, Math.PI * 2); 
+				PlayerCtx.fillStyle = colors[colorTheme][1]; 
+				PlayerCtx.fill(); 
+				PlayerCtx.strokeStyle = colors[colorTheme][2];
+				PlayerCtx.lineWidth = 1; 
+				PlayerCtx.stroke();
+			} else {
+				// roughPlayer.circle(localScale * .5, localScale * .5,
+				// localScale * size, {fill: colors[colorTheme][1], fillStyle: "solid", stroke: colors[colorTheme][2], strokeWidth: 1});
+				PlayerCtx.beginPath(); 
+				PlayerCtx.arc(localScale * .5, localScale * .5, localScale * size * 0.5, 0, Math.PI * 2); 
+				PlayerCtx.fillStyle = colors[colorTheme][1]; 
+				PlayerCtx.fill(); 
+				PlayerCtx.strokeStyle = colors[colorTheme][2];
+				PlayerCtx.lineWidth = 1; 
+				PlayerCtx.stroke();
+			}
 
-			//Render wall
-			roughWall.rectangle(wallMargin * 0.5, wallMargin * 0.5, 
+
+			// Wall
+			var size = 1;
+			if (usePerfectShapes) {
+				const wallImg = new Image();
+				wallImg.src = "images/wall.png";
+				wallImg.onload = () => {
+					wallCtx.drawImage(
+						wallImg,
+						wallMargin * 0.5,
+						wallMargin * 0.5,
+						localScale,
+						localScale
+					);
+				};
+			} else {
+				roughWall.rectangle(wallMargin * 0.5, wallMargin * 0.5, 
 				localScale, localScale, {stroke: "none", fill: colors[colorTheme][2], strokeWidth: 1});
+			}
 
-			//Render box
+
+			// Box
 			var size = 0.8;
-			roughBox.rectangle(boxMargin * 0.5 + (1-size) * 0.5 * localScale, boxMargin * 0.5 + (1-size) * 0.5 * localScale, 
-			localScale * size, localScale * size, {stroke: colors[colorTheme][2], fill: colors[colorTheme][2], strokeWidth: 2});
+			if (usePerfectShapes) {
+				const boxImg = new Image();
+				boxImg.src = "images/box.png";
+				boxImg.onload = () => {
+					boxCtx.drawImage(
+						boxImg,
+						boxMargin * 0.5 + (1-size) * 0.5 * localScale,
+						boxMargin * 0.5 + (1-size) * 0.5 * localScale,
+						localScale * size,
+						localScale * size
+					);
+				};
+			} else {
+				roughBox.rectangle(boxMargin * 0.5 + (1-size) * 0.5 * localScale, boxMargin * 0.5 + (1-size) * 0.5 * localScale, 
+				localScale * size, localScale * size, {stroke: colors[colorTheme][2], fill: colors[colorTheme][2], strokeWidth: 2});
+			}
 
-			//Render rubble
-			var size = 1.1;
-			roughRubble.rectangle(rubbleMargin * 0.5 + (1-size) * 0.5 * localScale, rubbleMargin * 0.5 + (1-size) * 0.5 * localScale, 
-			localScale * size, localScale * size, {stroke: "none", fill: colors[colorTheme][2], fillStyle: "dots", fillWeight: localScale / 70, strokeWidth: 2});
 
-			//Render target
+			// Rubble
+			if (usePerfectShapes) {
+				var size = 1.1;
+				roughRubble.rectangle(rubbleMargin * 0.5 + (1-size) * 0.5 * localScale, rubbleMargin * 0.5 + (1-size) * 0.5 * localScale, 
+				localScale * size, localScale * size, {stroke: "none", fill: colors[colorTheme][2], fillStyle: "dots", fillWeight: localScale / 70, strokeWidth: 2});
+			} else {
+				var size = 1.1;
+				roughRubble.rectangle(rubbleMargin * 0.5 + (1-size) * 0.5 * localScale, rubbleMargin * 0.5 + (1-size) * 0.5 * localScale, 
+				localScale * size, localScale * size, {stroke: "none", fill: colors[colorTheme][2], fillStyle: "dots", fillWeight: localScale / 70, strokeWidth: 2});
+			}
+
+
+			// Target
 			var size = 0.9;
-			roughTarget.rectangle(targetMargin * 0.5 + (1-size) * 0.5 * localScale, targetMargin * 0.5 + (1-size) * 0.5 * localScale, 
-			localScale * size, localScale * size, {fillStyle: "solid", fill: colors[colorTheme][1], stroke: colors[colorTheme][2], bowing: 4, strokeWidth: 1, fillWeight: 0.25});
+			if (usePerfectShapes) {
+				const targetImg = new Image();
+				targetImg.src = "images/target.png";
+				targetImg.onload = () => {
+					targetCtx.drawImage(
+						targetImg,
+						targetMargin * 0.5 + (1-size) * 0.5 * localScale,
+						targetMargin * 0.5 + (1-size) * 0.5 * localScale,
+						localScale * size,
+						localScale * size
+					);
+				};
+			} else {
+				roughTarget.rectangle(targetMargin * 0.5 + (1-size) * 0.5 * localScale, targetMargin * 0.5 + (1-size) * 0.5 * localScale, 
+				localScale * size, localScale * size, {fillStyle: "solid", fill: colors[colorTheme][1], stroke: colors[colorTheme][2], bowing: 4, strokeWidth: 1, fillWeight: 0.25});
+			}
 		}
 
 		var shaking = (camShakeX != 0 || camShakeY != 0);
@@ -482,7 +637,7 @@ function gameLoop() {
 		else if (camShakeY < 0) {camShakeY = Math.min(0, camShakeY + reduceCamShake)}
 
 		var levelMargin = 20; //In pixels, positive
-		if (rerendered || timeSinceUpdatedRenders >= timeToUpdateRenders || timeSinceLastAction <= timeToCompleteTween * 2 || alph != 1 || shaking) {
+		if (!sandboxMode && (rerendered || timeSinceUpdatedRenders >= timeToUpdateRenders || timeSinceLastAction <= timeToCompleteTween * 2 || alph != 1 || shaking)) {
 			//Render level
 			if (localScale != previousScale || dirtyRender) {
 				levelCanvas.width = horWidth+levelMargin;
@@ -501,6 +656,10 @@ function gameLoop() {
 			drawLevel(0, 0, gridWidth, gridHeight, localScale);
 
 			rerendered = true;
+		}
+		
+		if (sandboxMode) {
+			dirtyRender = false;
 		}
 
 		if (rerendered || titleScreen) {
@@ -528,7 +687,7 @@ function gameLoop() {
 			function drawRepeat(img) {
 				for(let y = 0; y <= screenHeightRatio; y++) {
 					for(let x = 0; x <= screenWidthRatio; x++) {
-						ctx.globalAlpha = Math.max(0, alph - Math.abs(y) * 0.1 - Math.abs(x * 0.1));
+						ctx.globalAlpha = alph; // Changed from the fading calculation
 
 						if (ctx.globalAlpha > 0) {
 							ctx.drawImage(img, 
@@ -556,27 +715,45 @@ function gameLoop() {
 				}
 			}
 
-			if (!reduceMotion) {
+			if (!reduceMotion && !sandboxMode) {
 				drawRepeat(pathCanvas);
 			}
-			drawRepeat(levelCanvas);
+			if (!sandboxMode) {
+				drawRepeat(levelCanvas);
+			}
 
-			const borderOffset = 5;
-			roughCanvas.rectangle(Math.round(cameraX-borderOffset + camShakeX * 0.5 * shakeMultiplier), Math.round(cameraY-borderOffset + camShakeY * 0.5 * shakeMultiplier), 
-				horWidth + borderOffset + levelMargin, verHeight + borderOffset + levelMargin, {stroke: colors[colorTheme][2], seed: roughSeed});
-			ctx.globalAlpha = 1;
+
+			// Only draw border if not in sandbox mode
+			if (!sandboxMode) {
+				const borderOffset = 5;
+				if (usePerfectShapes) {
+					ctx.strokeStyle = colors[colorTheme][2];
+					ctx.lineWidth = 2;
+					ctx.strokeRect(Math.round(cameraX-borderOffset + camShakeX * 0.5 * shakeMultiplier), 
+						Math.round(cameraY-borderOffset + camShakeY * 0.5 * shakeMultiplier), 
+						horWidth + borderOffset + levelMargin, verHeight + borderOffset + levelMargin);
+				} else {
+					// roughCanvas.rectangle(Math.round(cameraX-borderOffset + camShakeX * 0.5 * shakeMultiplier), Math.round(cameraY-borderOffset + camShakeY * 0.5 * shakeMultiplier), 
+					// 	horWidth + borderOffset + levelMargin, verHeight + borderOffset + levelMargin, {stroke: colors[colorTheme][2], seed: roughSeed});
+					ctx.strokeStyle = colors[colorTheme][2];
+					ctx.lineWidth = 2;
+					ctx.strokeRect(Math.round(cameraX-borderOffset + camShakeX * 0.5 * shakeMultiplier), 
+						Math.round(cameraY-borderOffset + camShakeY * 0.5 * shakeMultiplier), 
+						horWidth + borderOffset + levelMargin, verHeight + borderOffset + levelMargin);
+				}
+			}
+			ctx.globalAlpha = alph;
 
 			//Draw rectangle
-			if (titleScreen || menuOpened) {
-				//Menu bg
+			if (!sandboxMode && menuOpened) {
 				ctx.globalAlpha = 0.4;
 				ctx.fillStyle = colors[colorTheme][1];
-				ctx.fillRect(-1,-1,canvas.width + 2, canvas.height + 2);
+				ctx.fillRect(-1, -1, canvas.width + 2, canvas.height + 2);
 				ctx.globalAlpha = 1;
 			}
 
 			//Draw level name
-			if (!titleScreen) {
+			if (!titleScreen && !sandboxMode) {  // Add !sandboxMode here
 				ctx.textAlign = "left";
 				ctx.font = (40 * zoom) + fontDefault;
 				ctx.globalAlpha = EaseInOut(timeSinceLevelNameChanged / timeToDisplayLevelName);
@@ -608,7 +785,7 @@ function gameLoop() {
 				ctx.textAlign = "left";
 				ctx.textBaseline = "center";
 				ctx.fillStyle = "black";
-
+				ctx.globalAlpha = 1;
 				var txt = gameName;
 
 				var textWidth = ctx.measureText(txt).width;
@@ -617,20 +794,198 @@ function gameLoop() {
 				txt = txt.repeat(amount);
 
 				var startX = 0;
-				if (!reduceMotion) {
-					var startX = (timing.timePlaying % 5) / 5;
-				}
+				var startX = (timing.timePlaying % 5) / 5;
+
 
 				drawStroked(ctx, txt,-startX * textWidth,canvas.height * .5);
 
 				ctx.font = Math.round(scale * 0.5) + fontDefault;
 				ctx.textAlign = "center";
 				drawStroked(ctx, subTitle,canvas.width * .5,canvas.height * .6);
+				// REMOVE THIS LINE:
+				//drawStroked(ctx, "[S] Sandbox Mode",canvas.width * .5,canvas.height * .7);
+			}
+			else if (sandboxMode) {
+				// Draw level grid in real-time
+				if (sandboxLevel) {
+					var localScale = scale;
+					var horWidth = sandboxGridWidth * localScale;
+					var verHeight = sandboxGridHeight * localScale;
+					var levelMargin = 20;
+					var cameraX = Math.round(canvas.width * 0.5 - horWidth * 0.5 - levelMargin * 0.5);
+					var cameraY = Math.round(canvas.height * 0.5 - verHeight * 0.5 - levelMargin * 0.5);
+					
+					// Draw grid
+					for (let y = 0; y < sandboxGridHeight; y++) {
+						for (let x = 0; x < sandboxGridWidth; x++) {
+							var cellType = sandboxLevel[y][x];
+							var drawX = cameraX + 10 + x * localScale;
+							var drawY = cameraY + 10 + y * localScale;
+							
+							// Draw based on cell type
+							if (cellType == obj.WALL) {
+								ctx.drawImage(wallCanvas, drawX - wallMargin * 0.5, drawY - wallMargin * 0.5);
+							} else if (cellType == obj.BOX || cellType == obj.SHIFTBOXHOR || cellType == obj.SHIFTBOXVER || cellType == obj.SHIFTBOX) {
+								ctx.drawImage(boxCanvas, drawX - boxMargin * 0.5, drawY - boxMargin * 0.5);
+								if (cellType == obj.SHIFTBOXHOR || cellType == obj.SHIFTBOX) {
+									roughCanvas.line(drawX + localScale * 0.2, drawY + localScale * 0.5, 
+										drawX + localScale * 0.8, drawY + localScale * 0.5, 
+										{stroke: colors[colorTheme][4], strokeWidth: localScale / 7, seed: roughSeed});
+								}
+								if (cellType == obj.SHIFTBOXVER || cellType == obj.SHIFTBOX) {
+									roughCanvas.line(drawX + localScale * 0.5, drawY + localScale * 0.2, 
+										drawX + localScale * 0.5, drawY + localScale * 0.8, 
+										{stroke: colors[colorTheme][4], strokeWidth: localScale / 7, seed: roughSeed});
+								}
+							} else if (cellType == obj.TARGET) {
+								ctx.drawImage(targetCanvas, drawX - targetMargin * 0.5, drawY - targetMargin * 0.5);
+							} else if (cellType == obj.RUBBLE) {
+								ctx.drawImage(rubbleCanvas, drawX - rubbleMargin * 0.5, drawY - rubbleMargin * 0.5);
+							} else if (cellType == obj.PLAYER) {
+								ctx.drawImage(playerCanvas, drawX, drawY);
+							}
+						}
+					}
+					
+					// Draw border
+					if (usePerfectShapes) {
+						ctx.strokeStyle = colors[colorTheme][2];
+						ctx.lineWidth = 2;
+						ctx.strokeRect(cameraX - 5, cameraY - 5, horWidth + 15 + levelMargin, verHeight + 15 + levelMargin);
+					} else {
+						roughCanvas.rectangle(cameraX - 5, cameraY - 5, 
+							horWidth + 15 + levelMargin, verHeight + 15 + levelMargin, 
+							{stroke: colors[colorTheme][2], seed: roughSeed});
+					}
+					
+					// Draw resize arrows
+					ctx.font = 30 + fontDefault;
+					ctx.textAlign = "center";
+					ctx.fillStyle = colors[colorTheme][2];
+					ctx.fillText("→", cameraX + horWidth + 15, cameraY + verHeight/2);
+					ctx.fillText("←", cameraX - 15, cameraY + verHeight/2);
+					ctx.fillText("↓", cameraX + horWidth/2, cameraY + verHeight + 15);
+					ctx.fillText("↑", cameraX + horWidth/2, cameraY - 15);
+				}
+				
+				// Draw toolbar at BOTTOM
+				var toolbarY = canvas.height - 60;
+				var toolbarItemWidth = 150;
+				ctx.font = 18 + fontDefault;
+				ctx.textAlign = "center";
+				
+				for (let i = 0; i < toolbarItems.length; i++) {
+					var toolX = 10 + i * toolbarItemWidth;
+					
+					if (selectedTool == toolbarItems[i].type) {
+						ctx.fillStyle = colors[colorTheme][2];
+						ctx.fillRect(toolX, toolbarY, toolbarItemWidth - 5, 50);
+					}
+					ctx.fillStyle = selectedTool == toolbarItems[i].type ? colors[colorTheme][1] : colors[colorTheme][2];
+					ctx.fillText((i+1) + ". " + toolbarItems[i].name, toolX + toolbarItemWidth/2 - 2, toolbarY + 30);
+				}
+				
+				// Draw controls at top
+				ctx.textAlign = "right";
+				ctx.fillStyle = colors[colorTheme][2];
+				ctx.font = 20 + fontDefault;
+				ctx.fillText("[P] Play Level", canvas.width - 20, 40);
+				ctx.fillText("[G] Grid Size", canvas.width - 20, 70);
+				//ctx.fillText("[Esc] Menu", canvas.width - 20, 100);
+				ctx.fillText("Right Click: Delete", canvas.width - 20, 130);
+				
+				ctx.textAlign = "left";
+				ctx.fillText("X Offset: " + sandboxOffsetX + " [Q/W]", 20, 40);
+				ctx.fillText("Y Offset: " + sandboxOffsetY + " [Z/X]", 20, 70);
+				
+				// Size dialog with selection system
+				if (showSizeDialog) {
+					ctx.globalAlpha = 0.7;
+					ctx.fillStyle = colors[colorTheme][1];
+					ctx.fillRect(0, 0, canvas.width, canvas.height);
+					ctx.globalAlpha = 1;
+					
+					ctx.fillStyle = colors[colorTheme][2];
+					ctx.fillRect(canvas.width/2 - 150, canvas.height/2 - 100, 300, 200);
+					
+					ctx.fillStyle = colors[colorTheme][1];
+					ctx.font = 24 + fontDefault;
+					ctx.textAlign = "center";
+					ctx.fillText("Grid Size", canvas.width/2, canvas.height/2 - 60);
+					
+					// Track which field is selected (0 = width, 1 = height)
+					if (!window.gridSizeSelection) window.gridSizeSelection = 0;
+					
+					// Draw width with selection indicator
+					if (window.gridSizeSelection === 0) {
+						ctx.fillStyle = colors[colorTheme][1];
+						ctx.fillText("> Width: " + sandboxGridWidth + " <", canvas.width/2, canvas.height/2 - 20);
+					} else {
+						ctx.fillStyle = colors[colorTheme][3];
+						ctx.fillText("Width: " + sandboxGridWidth, canvas.width/2, canvas.height/2 - 20);
+					}
+					
+					// Draw height with selection indicator
+					if (window.gridSizeSelection === 1) {
+						ctx.fillStyle = colors[colorTheme][1];
+						ctx.fillText("> Height: " + sandboxGridHeight + " <", canvas.width/2, canvas.height/2 + 20);
+					} else {
+						ctx.fillStyle = colors[colorTheme][3];
+						ctx.fillText("Height: " + sandboxGridHeight, canvas.width/2, canvas.height/2 + 20);
+					}
+					
+					ctx.fillStyle = colors[colorTheme][1];
+					ctx.font = 18 + fontDefault;
+					ctx.fillText("[↑/↓] Select  [←/→] Change  [Enter] Confirm", canvas.width/2, canvas.height/2 + 70);
+					
+					if (confirmInput.fired && !confirmInput.wasHandled) {
+						confirmInput.wasHandled = true;
+						showSizeDialog = false;
+						sandboxGridWidth = Math.max(3, Math.min(30, sandboxGridWidth));
+						sandboxGridHeight = Math.max(3, Math.min(30, sandboxGridHeight));
+						initializeSandboxLevel();
+						window.gridSizeSelection = 0;
+						audio(sfx.SELECT, true);
+					}
+					
+					// Up/Down to select field - only when dialog is shown
+					if (verticalInput.fired && !verticalInput.wasHandled) {
+						verticalInput.wasHandled = true;
+						if (verticalInput.delta === 1) {
+							window.gridSizeSelection = Math.min(1, window.gridSizeSelection + 1);
+						} else if (verticalInput.delta === -1) {
+							window.gridSizeSelection = Math.max(0, window.gridSizeSelection - 1);
+						}
+					}
+					
+					// Left/Right to change value - only when dialog is shown
+					if (horizontalInput.fired && !horizontalInput.wasHandled) {
+						horizontalInput.wasHandled = true;
+						if (window.gridSizeSelection === 0) {
+							sandboxGridWidth += horizontalInput.delta;
+							sandboxGridWidth = Math.max(3, Math.min(30, sandboxGridWidth));
+						} else {
+							sandboxGridHeight += horizontalInput.delta;
+							sandboxGridHeight = Math.max(3, Math.min(30, sandboxGridHeight));
+						}
+					}
+				}
 			}
 			else if (!menuOpened) {
 				if (!victory) {
 					//Menu
-					roughCanvas.rectangle(-5, -5, 85, 85, {fill: colors[colorTheme][2], fillWeight: 4, stroke: "none", seed: Math.round(roughSeed / 2)});
+					if (usePerfectShapes) {
+						ctx.save();
+						ctx.fillStyle = colors[colorTheme][2];
+						ctx.fillRect(-5, -5, 85, 85);
+						ctx.restore();
+					} else {
+						//roughCanvas.rectangle(-5, -5, 85, 85, {fill: colors[colorTheme][2], fillWeight: 4, stroke: "none", seed: Math.round(roughSeed / 2)});
+						ctx.save();
+						ctx.fillStyle = colors[colorTheme][2];
+						ctx.fillRect(-5, -5, 85, 85);
+						ctx.restore();
+					}
 					ctx.fillText("[Esc]",50,60);
  
 					if (level != 0) {
@@ -641,7 +996,18 @@ function gameLoop() {
 						}
 
 						//Reset
-						roughCanvas.rectangle(canvas.width-160, canvas.height - 80, 100, 50, {fill: colors[colorTheme][2], fillWeight: 4, stroke: "none", seed: Math.round(roughSeed / 2)});
+						if (usePerfectShapes) {
+							ctx.save();
+							ctx.fillStyle = colors[colorTheme][2];
+							ctx.fillRect(canvas.width-160, canvas.height - 80, 100, 50);
+							ctx.restore();
+						} else {
+							//roughCanvas.rectangle(canvas.width-160, canvas.height - 80, 100, 50, {fill: colors[colorTheme][2], fillWeight: 4, stroke: "none", seed: Math.round(roughSeed / 2)});
+							ctx.save();
+							ctx.fillStyle = colors[colorTheme][2];
+							ctx.fillRect(canvas.width-160, canvas.height - 80, 100, 50);
+							ctx.restore();
+						}
 						ctx.fillText("[R] Retry",canvas.width-110,canvas.height - 55);
 
 						if (undoStack.length > 0) {
@@ -650,8 +1016,19 @@ function gameLoop() {
 							ctx.globalAlpha = 0.25;
 						}
 						//Undo
-							roughCanvas.rectangle(canvas.width-280, canvas.height - 80, 100, 50, {fill: colors[colorTheme][2], fillWeight: 4, stroke: "none", seed: Math.round(roughSeed / 2) + 10});
-							ctx.fillText("[Z] Undo",canvas.width-230,canvas.height - 55);
+						if (usePerfectShapes) {
+							ctx.save();
+							ctx.fillStyle = colors[colorTheme][2];
+							ctx.fillRect(canvas.width-280, canvas.height - 80, 100, 50);
+							ctx.restore();
+						} else {
+							//roughCanvas.rectangle(canvas.width-280, canvas.height - 80, 100, 50, {fill: colors[colorTheme][2], fillWeight: 4, stroke: "none", seed: Math.round(roughSeed / 2) + 10});
+							ctx.save();
+							ctx.fillStyle = colors[colorTheme][2];
+							ctx.fillRect(canvas.width-280, canvas.height - 80, 100, 50);
+							ctx.restore();
+						}
+						ctx.fillText("[Z] Undo",canvas.width-230,canvas.height - 55);
 						}
 					}
 				} else {
@@ -661,12 +1038,36 @@ function gameLoop() {
 					var growth = EaseInOut(timeSinceMenuToggled / timeToToggleMenu);
 				}
 				var width = 400 * growth;
-				roughCanvas.rectangle(-5, -5, width + 5, 55 + 250 * growth, {fill: colors[colorTheme][2], fillWeight: 4, stroke: "none", seed: Math.round(roughSeed / 2)});
+				//roughCanvas.rectangle(-5, -5, width + 5, 55 + 250 * growth, {fill: colors[colorTheme][2], fillWeight: 4, stroke: "none"}); //, seed: Math.round(roughSeed / 2)
 
 				var textBase = 50;
 				var textOffset = 50 * growth;
 				ctx.globalAlpha = growth;
-				roughCanvas.rectangle(20, textBase * 0.5 + menuSelection * textOffset, width - 40, textOffset, {fillStyle: "none", stroke: colors[colorTheme][1], seed: roughSeed});
+				if (usePerfectShapes) {
+					ctx.save();
+					ctx.fillStyle = colors[colorTheme][2];
+					ctx.fillRect(canvas.width-40, canvas.height - 80, 100, 50);
+					ctx.restore();
+				} else {
+					// roughCanvas.rectangle(20, textBase * 0.5 + menuSelection * textOffset, width - 40, textOffset, {fillStyle: "none", stroke: colors[colorTheme][1], seed: roughSeed});
+					ctx.save();
+					ctx.fillStyle = colors[colorTheme][2];
+					ctx.fillRect(canvas.width - canvas.width, canvas.height - canvas.height, 400, 300);
+					ctx.restore();
+					ctx.save();
+					ctx.save();
+					ctx.strokeStyle = colors[colorTheme][1]; // stroke color replaces rough stroke
+					ctx.lineWidth = 2; // optional, adjust as needed
+					ctx.strokeRect(
+						20, 
+						textBase * 0.5 + menuSelection * textOffset, 
+						width - 40, 
+						textOffset
+					);
+					ctx.restore();
+
+				}	
+				
 
 				ctx.fillStyle = colors[colorTheme][1];
 				ctx.textAlign = "center";
@@ -691,13 +1092,13 @@ function gameLoop() {
 				txt = "Theme: "+colors[colorTheme][0] + " ("+(colorTheme+1) + "/" + colors.length + ")";
 				ctx.fillText(txt, width * 0.5,textBase + textOffset * 3);
 
-				if (level != 0) {
+				if (level == 999) {
+					ctx.fillText("Exit Sandbox", width * 0.5, textBase + textOffset * 4 );
+				} else if (level != 0) {
 					ctx.fillText("Back to Level Select", width * 0.5, textBase + textOffset * 4 );
 				} else {
 					ctx.font = 16 + fontDefault;
-					ctx.fillText("Game by Tom Hermans - v1.1.0", width * 0.5, textBase + textOffset * 3.8);
-					ctx.fillText("rough - Copyright (c) 2019 Preet Shihn", width * 0.5, textBase + textOffset * 4.2);
-					ctx.fillText("ZzFX - Copyright (c) 2019 Frank Force", width * 0.5, textBase + textOffset * 4.6);
+					ctx.fillText("Game by Death - v1.0.0", width * 0.5, textBase + textOffset * 3.8);
 				}
 
 				ctx.globalAlpha = 1;
@@ -723,6 +1124,8 @@ function gameLoop() {
 		}
 	}
 };
+
+
 
 window.requestAnimationFrame(gameLoop);
 
@@ -755,7 +1158,7 @@ function drawLevel(rootX,rootY, gridWidth, gridHeight, localScale) {
 	var playerTween = tweenPlayer();
 
 	//Path
-	if (undoStack.length > 0 && !reduceMotion) {
+	if (undoStack.length > 0) {// && !reduceMotion
 		var lnt = steps.length;
 		var last = steps.lastIndexOf(" ");
 		var tot = lnt - last;
@@ -885,7 +1288,21 @@ function drawLevel(rootX,rootY, gridWidth, gridHeight, localScale) {
 	for(let i = 0; i != levelNodes.length; i++) {
 		//drawStroked()
 		levelCtx.font = Math.round(0.5 * localScale) + fontDefault;
-		levelCtx.fillText(levels[levelNodes[i].target][0].nr.toString(), PosX(levelNodes[i].x) + targetCanvas.width * 0.5 - targetMargin * 0.5, PosY(levelNodes[i].y) - targetMargin * 0.5 + targetCanvas.height * 0.5);
+		
+		// Get the level data safely
+		var targetLevel = levelNodes[i].target;
+		var levelData = levels[targetLevel];
+		var displayText = "";
+		
+		if (levelData && levelData[0] && levelData[0].nr !== undefined) {
+			displayText = levelData[0].nr.toString();
+		} else if (targetLevel === 25) {
+			displayText = "S"; // "S" for Sandbox
+		} else {
+			displayText = "?";
+		}
+		
+		levelCtx.fillText(displayText, PosX(levelNodes[i].x) + targetCanvas.width * 0.5 - targetMargin * 0.5, PosY(levelNodes[i].y) - targetMargin * 0.5 + targetCanvas.height * 0.5);
 		
 		if (levelSolved[i+1] == 2) {
 			levelCtx.font = Math.round(0.4 * localScale)+ fontDefault;
@@ -903,7 +1320,7 @@ function drawLevel(rootX,rootY, gridWidth, gridHeight, localScale) {
 	levelCtx.fillStyle = colors[colorTheme][2];
 	for(let i = 0; i != gates.length; i++) {
 		if (gates[i].target <= amountOfLevelsSolved) {
-			levelCtx.globalAlpha = 0.2;
+			levelCtx.globalAlpha = 1;
 		} else {
 			levelCtx.globalAlpha = 1;
 		}
@@ -973,30 +1390,107 @@ function drawLevel(rootX,rootY, gridWidth, gridHeight, localScale) {
 
 function input(event) {
 	if (victory) {return;}
-	if (titleScreen && !splashScreen) {
+	// Ignore all non-sandbox editor inputs
+	if (sandboxMode) {
+		// Only allow editor-related keys to work, block game menu or level select
+		const allowedKeys = ["p", "P", "g", "G", "q", "Q", "w", "W", "z", "Z", "x", "X", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Escape","1","2","3","4","5","6","7","8","9","0"];
+		if (!allowedKeys.includes(event.key)) {
+			event.preventDefault();
+			return;
+		}
+	}
+
+	// Sandbox mode input handling
+	if (sandboxMode && !showSizeDialog && !menuOpened) {
+		var key = event.key;
+		if (key >= '1' && key <= '9') {
+			var index = parseInt(key) - 1;
+			if (index < toolbarItems.length) {
+				selectedTool = toolbarItems[index].type;
+			}
+		}
+		if (key == 'p' || key == 'P') {
+			playSandboxLevel();
+			return;
+		}
+		if (key == 'g' || key == 'G') {
+			showSizeDialog = true;
+			return;
+		}
+		if (key == 'q' || key == 'Q') {
+			sandboxOffsetX--;
+			dirtyRender = true;
+			// Update the stored state immediately
+			if (window.savedSandboxState) {
+				window.savedSandboxState.offsetX = sandboxOffsetX;
+			}
+			return;
+		}
+		if (key == 'w' || key == 'W') {
+			sandboxOffsetX++;
+			dirtyRender = true;
+			// Update the stored state immediately
+			if (window.savedSandboxState) {
+				window.savedSandboxState.offsetX = sandboxOffsetX;
+			}
+			return;
+		}
+		if (key == 'z' || key == 'Z') {
+			sandboxOffsetY--;
+			dirtyRender = true;
+			// Update the stored state immediately
+			if (window.savedSandboxState) {
+				window.savedSandboxState.offsetY = sandboxOffsetY;
+			}
+			return;
+		}
+		if (key == 'x' || key == 'X') {
+			sandboxOffsetY++;
+			dirtyRender = true;
+			// Update the stored state immediately
+			if (window.savedSandboxState) {
+				window.savedSandboxState.offsetY = sandboxOffsetY;
+			}
+			return;
+		}
+	}
+		if (titleScreen && !splashScreen) {
 		audio(sfx.SELECT, true);
 		titleScreen = false;
 		return;
 	}
-
 	var key = event.key;
 	var code = event.code;
 
 	dirtyRender = true;
 
-	if (key == "Escape" && timeSinceMenuToggled >= 0.1) {
-		menuOpened = !menuOpened;
-		if (menuOpened) {
-			audio(sfx.MENU, true);
-		} else {
-			audio(sfx.SELECT, true);
+	if (key === "Escape") {
+		timeSinceMenuToggled = 0.1;
+
+		// Prevent menu toggle while editing sandbox
+		if (sandboxMode) {
+			audio(sfx.BACK, true);  // Fixed: was audiosfx.BACK
+			return;
 		}
+
+		// If in sandbox play mode (level 999 only), exit back to sandbox editor
+		if (level === 999 && !sandboxMode) {
+			exitSandbox();
+			audio(sfx.BACK, true);  // Fixed: was audiosfx.BACK
+			return;
+		}
+
+		menuOpened = !menuOpened;
+		if (menuOpened) audio(sfx.MENU, true);  // Fixed: was audiosfx.MENU
+		else audio(sfx.SELECT, true);  // Fixed: was audiosfx.SELECT
+
 		horizontalInput.reset();
 		verticalInput.reset();
 		undoInput.reset();
 		timeSinceMenuToggled = 0;
 		menuSelection = 0;
 	}
+
 
 	if (!menuOpened) {
 		if (code == "KeyR") {
@@ -1021,6 +1515,17 @@ function input(event) {
 
 function loadLevel(number, resetStack = true) {
 	level = number;
+
+	// Check if entering sandbox mode (level 25 or last level)
+	if ((number == 25 || number == levels.length - 1) && !sandboxMode) {
+		enterSandboxMode();
+		return;
+	}
+	
+	// If already in sandbox mode and trying to load level 999, skip normal level loading
+	if (number == 999 && sandboxMode) {
+		return;
+	}
 
 	var levelToLoad = levels[number].slice();
 	var metadata = levelToLoad.shift();
@@ -1090,7 +1595,14 @@ function loadLevel(number, resetStack = true) {
 			player = {x: x, y: y};
 			placedPlayer = true;
 
-			levelName = levels[targetLevel][0].nr+": "+levels[targetLevel][0].name + " - [Space] to enter";
+			// Check if it's the sandbox level
+			if (targetLevel === 25) {
+				levelName = " ";
+			} else if (levels[targetLevel] && levels[targetLevel][0]) {
+				levelName = levels[targetLevel][0].nr + ": " + levels[targetLevel][0].name + " - [Space] to enter";
+			} else {
+				levelName = "Unknown Level - [Space] to enter";
+			}
 			timeSinceLevelNameChanged = 0;
 		}
 	}
@@ -1145,6 +1657,10 @@ function loadLevel(number, resetStack = true) {
 					break;
 				case obj.LEVELSIX:
 					AddLevelNode(5, x, y);
+					break;
+				case obj.LEVELSEVEN:
+					levelNodes.push({x: x, y: y, target: 25}); // Directly target level 25 (sandbox)
+					checkPlayer(x, y, 25);
 					break;
 				case obj.RUBBLE:
 					rubble.push({x: x, y: y});
@@ -1435,6 +1951,13 @@ function MovePlayer(horDelta, verDelta) {
 		}
 
 		if (hasWon) {
+			// Skip victory screen for sandbox levels
+			if (level == 999) {
+				exitSandbox();
+				audio(sfx.VICTORY, true);
+				return;
+			}
+			
 			if (levelSolved[level] != 2) {
 				levelSolved[level] = 2;
 				amountOfLevelsSolved++;
@@ -1610,7 +2133,18 @@ function setLevelName(targetLevel, offset = 0) {
 	} else if (level != 0 && !levelSolved.includes(2)) {
 		levelName = "Push the box to the goal!";
 	} else if (targetLevel != null && targetLevel + offset != 0) {
-		levelName = levels[targetLevel + offset][0].nr+": "+levels[targetLevel + offset][0].name;
+		var levelIndex = targetLevel + offset;
+		var levelData = levels[levelIndex];
+		
+		// Check if it's the sandbox level or has proper structure
+		if (levelIndex === 25 || (levelData && levelData[0] && levelData[0].name === "Sandbox Editor")) {
+			levelName = "999: Sandbox Editor";
+		} else if (levelData && levelData[0] && levelData[0].nr !== undefined) {
+			levelName = levelData[0].nr + ": " + levelData[0].name;
+		} else {
+			levelName = "Unknown Level";
+		}
+		
 		if (level == 0) {
 			levelName += " - [Space] to enter";
 		}
@@ -1653,6 +2187,292 @@ function setCanvasScales(ls) {
 	targetCanvas.height = ls+targetMargin;
 }
 
+
+
+
+
+
+
+
+// ADD THESE NEW FUNCTIONS AT THE END:
+function enterSandboxMode() {
+	sandboxMode = true;
+	titleScreen = false;
+	victory = false;
+	menuOpened = false;
+	showSizeDialog = false;
+	level = 999;
+	if (!sandboxLevel) {
+		sandboxGridWidth = 10;
+		sandboxGridHeight = 10;
+		initializeSandboxLevel();
+	}
+	audio(sfx.SELECT, true);
+	dirtyRender = true;
+}
+
+function initializeSandboxLevel() {
+	sandboxLevel = [];
+	for (let y = 0; y < sandboxGridHeight; y++) {
+		sandboxLevel[y] = obj.EMPTY.repeat(sandboxGridWidth);
+	}
+	
+	// Add some default items for a starter level
+	if (sandboxGridWidth >= 10 && sandboxGridHeight >= 10) {
+		// Place player in center
+		var centerX = Math.floor(sandboxGridWidth / 2);
+		var centerY = Math.floor(sandboxGridHeight / 2);
+		setSandboxCell(centerX, centerY, obj.PLAYER);
+		
+		// Add some walls around the edges
+		for (let x = 0; x < sandboxGridWidth; x++) {
+			setSandboxCell(x, 0, obj.WALL);
+			setSandboxCell(x, sandboxGridHeight - 1, obj.WALL);
+		}
+		for (let y = 1; y < sandboxGridHeight - 1; y++) {
+			setSandboxCell(0, y, obj.WALL);
+			setSandboxCell(sandboxGridWidth - 1, y, obj.WALL);
+		}
+		
+		// Add a box and target
+		setSandboxCell(centerX - 1, centerY, obj.BOX);
+		setSandboxCell(centerX - 2, centerY, obj.TARGET);
+	}
+}
+
+function handleSandboxClick(e) {
+	if (showSizeDialog) return;
+	
+	var rect = canvas.getBoundingClientRect();
+	var mouseX = e.clientX - rect.left;
+	var mouseY = e.clientY - rect.top;
+	
+	var localScale = scale;
+	var horWidth = sandboxGridWidth * localScale;
+	var verHeight = sandboxGridHeight * localScale;
+	var levelMargin = 20;
+	
+	var cameraX = Math.round(canvas.width * 0.5 - horWidth * 0.5 - levelMargin * 0.5);
+	var cameraY = Math.round(canvas.height * 0.5 - verHeight * 0.5 - levelMargin * 0.5);
+	
+	var gridX = Math.floor((mouseX - cameraX - 10) / localScale);
+	var gridY = Math.floor((mouseY - cameraY - 10) / localScale);
+	
+	if (gridX >= 0 && gridX < sandboxGridWidth && gridY >= 0 && gridY < sandboxGridHeight) {
+		setSandboxCell(gridX, gridY, selectedTool);
+	}
+	
+	var arrowSize = 30;
+	if (mouseX > cameraX + horWidth - arrowSize && mouseX < cameraX + horWidth &&
+		mouseY > cameraY + verHeight/2 - arrowSize/2 && mouseY < cameraY + verHeight/2 + arrowSize/2) {
+		sandboxGridWidth++;
+		for (let y = 0; y < sandboxLevel.length; y++) {
+			sandboxLevel[y] += obj.EMPTY;
+		}
+	}
+	if (mouseX > cameraX - arrowSize && mouseX < cameraX &&
+		mouseY > cameraY + verHeight/2 - arrowSize/2 && mouseY < cameraY + verHeight/2 + arrowSize/2) {
+		if (sandboxGridWidth > 3) sandboxGridWidth--;
+		for (let y = 0; y < sandboxLevel.length; y++) {
+			sandboxLevel[y] = sandboxLevel[y].slice(0, -1);
+		}
+	}
+	if (mouseY > cameraY + verHeight - arrowSize && mouseY < cameraY + verHeight &&
+		mouseX > cameraX + horWidth/2 - arrowSize/2 && mouseX < cameraX + horWidth/2 + arrowSize/2) {
+		sandboxGridHeight++;
+		sandboxLevel.push(obj.EMPTY.repeat(sandboxGridWidth));
+	}
+	if (mouseY > cameraY - arrowSize && mouseY < cameraY &&
+		mouseX > cameraX + horWidth/2 - arrowSize/2 && mouseX < cameraX + horWidth/2 + arrowSize/2) {
+		if (sandboxGridHeight > 3) {
+			sandboxGridHeight--;
+			sandboxLevel.pop();
+		}
+	}
+	
+	dirtyRender = true;
+}
+
+function setSandboxCell(x, y, type) {
+	// If placing player, remove old player
+	if (type == obj.PLAYER) {
+		for (let i = 0; i < sandboxLevel.length; i++) {
+			sandboxLevel[i] = sandboxLevel[i].replace(obj.PLAYER, obj.EMPTY);
+		}
+	}
+	
+	// If painting over player with something else, it will replace it
+	var line = sandboxLevel[y];
+	sandboxLevel[y] = line.substring(0, x) + type + line.substring(x + 1);
+	dirtyRender = true;
+}
+
+function playSandboxLevel() {
+	// Create temporary level data
+	var levelData = [{nr: 999, name: "Custom Level", xOff: sandboxOffsetX, yOff: sandboxOffsetY}];
+
+	// Check if player exists
+	var hasPlayer = false;
+	for (let y = 0; y < sandboxLevel.length; y++) {
+		if (sandboxLevel[y].includes(obj.PLAYER)) {
+			hasPlayer = true;
+			break;
+		}
+	}
+	
+	if (!hasPlayer) {
+		audio(sfx.BUMP, true);
+		return; // Don't play if no player
+	}
+	
+	// Store the current sandbox state before playing
+	var savedSandboxLevel = [];
+	for (let y = 0; y < sandboxLevel.length; y++) {
+		savedSandboxLevel.push(sandboxLevel[y]);
+	}
+	var savedWidth = sandboxGridWidth;
+	var savedHeight = sandboxGridHeight;
+	var savedOffsetX = sandboxOffsetX;
+	var savedOffsetY = sandboxOffsetY;
+	
+	// Store sandbox state
+	window.savedSandboxState = {
+		level: savedSandboxLevel,
+		width: savedWidth,
+		height: savedHeight,
+		offsetX: savedOffsetX,
+		offsetY: savedOffsetY
+	};
+	
+	// Create temporary level data
+	var levelData = [{nr: 999, name: "Custom Level", xOff: sandboxOffsetX, yOff: sandboxOffsetY}];
+	for (let y = 0; y < sandboxLevel.length; y++) {
+		levelData.push(sandboxLevel[y]);
+	}
+	
+	levels[999] = levelData;
+	
+	// Directly set variables without calling loadLevel
+	sandboxMode = false;
+	level = 999;
+	victory = false;
+	titleScreen = false;
+	menuOpened = false;
+	
+	// Manually load the level data
+	var levelToLoad = levels[999].slice();
+	var metadata = levelToLoad.shift();
+	
+	player = {x: 0, y: 0};
+	walls.length = 0;
+	boxes.length = 0;
+	targets.length = 0;
+	levelNodes.length = 0;
+	rubble.length = 0;
+	gates.length = 0;
+	
+	levelOffsetX = metadata.xOff || 0;
+	levelOffsetY = metadata.yOff || 0;
+	autoScrollX = 0;
+	autoScrollY = 0;
+	
+	freshState = true;
+	camShakeX = 0;
+	camShakeY = 0;
+	
+	gridHeight = levelToLoad.length;
+	gridWidth = 0;
+	
+	var placedPlayer = false;
+	
+	for(let y = 0; y < gridHeight; y++) {
+		gridWidth = Math.max(gridWidth, levelToLoad[y].length);
+		for(let x = 0; x < levelToLoad[y].length; x++) {
+			var str = levelToLoad[y].substring(x,x+1).toLowerCase();
+			switch (str) {
+				case obj.PLAYER:
+					if (!placedPlayer) {
+						player = {x: x, y: y};
+						placedPlayer = true;
+					}
+					break;
+				case obj.WALL:
+					walls.push({x: x, y: y});
+					break;
+				case obj.BOX:
+					boxes.push({x: x, y: y, shift: 0});
+					break;
+				case obj.SHIFTBOXHOR:
+					boxes.push({x: x, y: y, shift: 1});
+					break;
+				case obj.SHIFTBOXVER:
+					boxes.push({x: x, y: y, shift: 2});
+					break;
+				case obj.SHIFTBOX:
+					boxes.push({x: x, y: y, shift: 3});
+					break;
+				case obj.TARGET:
+					targets.push({x: x, y: y});
+					break;
+				case obj.RUBBLE:
+					rubble.push({x: x, y: y});
+					break;
+			}
+		}
+	}
+	
+	undoStack = [];
+	steps = "";
+	timeSinceLevelStart = 0;
+	timeSinceLevelWon = timeUntilLevelEnd;
+	
+	levelName = "999: Custom Level";
+	timeSinceLevelNameChanged = 0;
+	
+	dirtyRender = true;
+	audio(sfx.SELECT, true);
+}
+
+function exitSandbox() {
+    // Restore last saved sandbox editor state
+    if (window.savedSandboxState) {
+        sandboxLevel = window.savedSandboxState.level;
+        sandboxGridWidth = window.savedSandboxState.width;
+        sandboxGridHeight = window.savedSandboxState.height;
+        sandboxOffsetX = window.savedSandboxState.offsetX;
+        sandboxOffsetY = window.savedSandboxState.offsetY;
+    }
+
+    // Reset gameplay and menu elements
+    sandboxMode = true;
+    victory = false;
+    level = 999;
+    menuOpened = false;
+    titleScreen = false;
+
+    // Clear all level data so nothing shows behind editor
+    player = { x: 0, y: 0 };
+    boxes = [];
+    targets = [];
+    walls = [];
+    rubble = [];
+    gates = [];
+    levelNodes = [];
+    undoStack = [];
+    steps = "";
+    
+    // DON'T change gridWidth/gridHeight here - remove these lines:
+    // gridWidth = sandboxGridWidth;
+    // gridHeight = sandboxGridHeight;
+    
+    // Clear level name
+    levelName = "";
+
+    dirtyRender = true;
+}
+
+
+
 //Hidden command to unlock all levels.
 function unlockAllLevels() {
 	if (amountOfLevelsSolved != levels.length) {
@@ -1662,3 +2482,5 @@ function unlockAllLevels() {
 		}
 	}
 }
+
+
