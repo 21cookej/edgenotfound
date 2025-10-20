@@ -80,7 +80,7 @@ levels.push([
   "###.###.#.#####"
 ]);
 levels.push([
-  { nr: 106, name: "How Many Rooms?", xOff: -1 },
+  { nr: 106, name: "How Many Rooms", xOff: 1 },
   "###.#########",
   "#.......#####",
   "#.....#.#####",
