@@ -51,15 +51,15 @@ levels.push([
 levels.push([
 	{nr: 104, name: "Things"}, //lrrlluurrDLLLLLLLdlUUrrdddrrrrrddrruLdlUUlluulllluuulluurDDldRRddrrrrruurDDllllLulDuullllllllllullldRRRRRRRRRRRurDrddrddlUluluurlddrRuulDrdRRRlllulldRRRR (153)
 	"#############",
-	"####..###....",
-	".......##....",
-	"####....#....",
-	"####.........",
-	"....#...#....",
-	"#....#.......",
-	"..|||.###....",
-	"##.p.........",
-	"tt#...###...."
+	"####..###",
+	".......##",
+	"####....#",
+	"####.....",
+	"....#...#",
+	"#....#...",
+	"...||.###",
+	"##.p.....",
+	"tt#...###"
 ]);
 levels.push([
   { nr: 105, name: "Looping Maze", yOff: -2 },
